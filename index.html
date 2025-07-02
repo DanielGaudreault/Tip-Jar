@@ -4,13 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Support My Work | Digital Tip Jar</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <!-- PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
     <style>
         :root {
             --primary: #6c5ce7;
             --secondary: #a29bfe;
             --dark: #2d3436;
             --light: #f5f6fa;
+            --success: #00b894;
         }
         
         * {
@@ -38,6 +43,8 @@
             max-width: 500px;
             padding: 2rem;
             text-align: center;
+            position: relative;
+            overflow: hidden;
         }
         
         .profile {
@@ -90,6 +97,11 @@
             box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2);
         }
         
+        .payment-btn.active {
+            border-color: var(--primary);
+            background: #f3f1ff;
+        }
+        
         .payment-icon {
             font-size: 2rem;
             margin-bottom: 0.5rem;
@@ -112,6 +124,13 @@
             font-size: 1.2rem;
             text-align: center;
             margin-bottom: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .amount-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
         }
         
         .submit-btn {
@@ -132,11 +151,52 @@
             transform: translateY(-2px);
         }
         
+        .submit-btn:disabled {
+            background: #b2b2b2;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .thank-you {
             display: none;
             margin-top: 2rem;
-            color: var(--primary);
+            color: var(--success);
             font-weight: 600;
+            font-size: 1.2rem;
+            animation: fadeIn 0.5s;
+        }
+        
+        .payment-container {
+            display: none;
+            margin-top: 1rem;
+        }
+        
+        #paypal-button-container {
+            margin-top: 1rem;
+        }
+        
+        .crypto-address {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            word-break: break-all;
+            font-family: monospace;
+        }
+        
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            margin-top: 0.5rem;
+            cursor: pointer;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         
         @media (max-width: 500px) {
@@ -153,65 +213,188 @@
             <h1>Support My Work</h1>
             <p class="bio">
                 If you enjoy what I create, consider leaving a tip to help me continue making awesome content!
+                Every contribution means a lot. Thank you for your support!
             </p>
         </div>
         
         <div class="payment-options">
-            <div class="payment-btn" id="stripe">
+            <div class="payment-btn" id="stripe-btn" data-method="stripe">
                 <i class="fab fa-cc-stripe payment-icon"></i>
-                <span class="payment-label">Credit Card</span>
+                <span class="payment-label">Credit/Debit Card</span>
             </div>
             
-            <div class="payment-btn" id="paypal">
+            <div class="payment-btn" id="paypal-btn" data-method="paypal">
                 <i class="fab fa-paypal payment-icon"></i>
                 <span class="payment-label">PayPal</span>
             </div>
             
-            <div class="payment-btn" id="venmo">
+            <div class="payment-btn" id="venmo-btn" data-method="venmo">
                 <i class="fab fa-vimeo-v payment-icon"></i>
                 <span class="payment-label">Venmo</span>
             </div>
             
-            <div class="payment-btn" id="crypto">
+            <div class="payment-btn" id="crypto-btn" data-method="crypto">
                 <i class="fab fa-bitcoin payment-icon"></i>
                 <span class="payment-label">Crypto</span>
             </div>
         </div>
         
         <div class="custom-amount">
-            <input type="number" class="amount-input" placeholder="Custom Amount ($)" min="1">
-            <button class="submit-btn" id="donate-btn">Send Tip</button>
+            <input type="number" class="amount-input" placeholder="Enter amount ($)" min="1" step="0.01" id="amount-input">
+            <button class="submit-btn" id="donate-btn" disabled>Continue to Payment</button>
+        </div>
+        
+        <!-- Payment Containers -->
+        <div id="stripe-container" class="payment-container">
+            <!-- Stripe Elements will be inserted here -->
+        </div>
+        
+        <div id="paypal-container" class="payment-container">
+            <div id="paypal-button-container"></div>
+        </div>
+        
+        <div id="venmo-container" class="payment-container">
+            <p>Scan this QR code with Venmo:</p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://venmo.com/?txn=pay&recipients=YourVenmoHandle&amount=5" 
+                 alt="Venmo QR Code" style="width: 150px; height: 150px; margin: 1rem auto;">
+            <p>or send to: <strong>@YourVenmoHandle</strong></p>
+        </div>
+        
+        <div id="crypto-container" class="payment-container">
+            <p>Send cryptocurrency to this address:</p>
+            <div class="crypto-address" id="btc-address">
+                bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+            </div>
+            <button class="copy-btn" onclick="copyToClipboard('btc-address')">Copy Address</button>
+            
+            <div class="crypto-address" id="eth-address" style="margin-top: 1rem;">
+                0x71C7656EC7ab88b098defB751B7401B5f6d8976F
+            </div>
+            <button class="copy-btn" onclick="copyToClipboard('eth-address')">Copy Address</button>
         </div>
         
         <div class="thank-you" id="thank-you">
-            Thank you for your support! ❤️
+            <i class="fas fa-heart" style="color: var(--success);"></i> Thank you for your support!
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const paymentOptions = document.querySelectorAll('.payment-btn');
+            // DOM Elements
+            const paymentButtons = document.querySelectorAll('.payment-btn');
             const donateBtn = document.getElementById('donate-btn');
             const thankYou = document.getElementById('thank-you');
-            const amountInput = document.querySelector('.amount-input');
+            const amountInput = document.getElementById('amount-input');
+            const paymentContainers = document.querySelectorAll('.payment-container');
             
+            // Payment method variables
             let selectedMethod = null;
+            let stripe = null;
+            let cardElement = null;
             
-            // Select payment method
-            paymentOptions.forEach(option => {
-                option.addEventListener('click', function() {
-                    paymentOptions.forEach(opt => opt.style.borderColor = '#a29bfe');
-                    this.style.borderColor = '#6c5ce7';
-                    selectedMethod = this.id;
+            // Initialize Stripe
+            function initializeStripe() {
+                stripe = Stripe('pk_test_YOUR_STRIPE_PUBLIC_KEY');
+                const elements = stripe.elements();
+                cardElement = elements.create('card', {
+                    style: {
+                        base: {
+                            fontSize: '16px',
+                            color: '#32325d',
+                        }
+                    }
+                });
+                cardElement.mount('#stripe-container');
+            }
+            
+            // Initialize PayPal
+            function initializePayPal() {
+                paypal.Buttons({
+                    createOrder: function(data, actions) {
+                        const amount = amountInput.value;
+                        return actions.order.create({
+                            purchase_units: [{
+                                amount: {
+                                    value: amount
+                                }
+                            }]
+                        });
+                    },
+                    onApprove: function(data, actions) {
+                        return actions.order.capture().then(function(details) {
+                            showThankYou();
+                        });
+                    },
+                    onError: function(err) {
+                        console.error('PayPal error:', err);
+                        alert('There was an error processing your PayPal payment');
+                    }
+                }).render('#paypal-button-container');
+            }
+            
+            // Show payment container for selected method
+            function showPaymentContainer(method) {
+                paymentContainers.forEach(container => {
+                    container.style.display = 'none';
+                });
+                
+                if (method) {
+                    document.getElementById(`${method}-container`).style.display = 'block';
+                }
+            }
+            
+            // Show thank you message
+            function showThankYou() {
+                thankYou.style.display = 'block';
+                amountInput.value = '';
+                paymentButtons.forEach(btn => btn.classList.remove('active'));
+                selectedMethod = null;
+                showPaymentContainer(null);
+                donateBtn.disabled = true;
+                
+                setTimeout(() => {
+                    thankYou.style.display = 'none';
+                }, 5000);
+            }
+            
+            // Copy to clipboard function
+            window.copyToClipboard = function(elementId) {
+                const element = document.getElementById(elementId);
+                const text = element.innerText;
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Copied to clipboard!');
+                });
+            };
+            
+            // Handle payment method selection
+            paymentButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    paymentButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedMethod = this.dataset.method;
+                    donateBtn.disabled = !amountInput.value;
+                    showPaymentContainer(selectedMethod);
+                    
+                    // Initialize payment method if needed
+                    if (selectedMethod === 'stripe' && !stripe) {
+                        initializeStripe();
+                    } else if (selectedMethod === 'paypal') {
+                        initializePayPal();
+                    }
                 });
             });
             
-            // Handle donation
-            donateBtn.addEventListener('click', function() {
+            // Handle amount input changes
+            amountInput.addEventListener('input', function() {
+                donateBtn.disabled = !this.value || !selectedMethod;
+            });
+            
+            // Handle donate button click
+            donateBtn.addEventListener('click', async function() {
                 const amount = amountInput.value;
                 
                 if (!amount || amount < 1) {
-                    alert('Please enter a valid amount');
+                    alert('Please enter a valid amount (minimum $1)');
                     return;
                 }
                 
@@ -220,19 +403,32 @@
                     return;
                 }
                 
-                // In a real app, this would connect to payment processor API
-                console.log(`Processing $${amount} via ${selectedMethod}`);
-                
-                // Show thank you message
-                thankYou.style.display = 'block';
-                amountInput.value = '';
-                
-                // Reset after 3 seconds
-                setTimeout(() => {
-                    thankYou.style.display = 'none';
-                    paymentOptions.forEach(opt => opt.style.borderColor = '#a29bfe');
-                    selectedMethod = null;
-                }, 3000);
+                // Process payment based on selected method
+                if (selectedMethod === 'stripe') {
+                    try {
+                        const { error, paymentMethod } = await stripe.createPaymentMethod({
+                            type: 'card',
+                            card: cardElement,
+                        });
+                        
+                        if (error) {
+                            alert(error.message);
+                            return;
+                        }
+                        
+                        // In a real app, you would send paymentMethod.id to your server
+                        console.log('Processing Stripe payment for $' + amount);
+                        showThankYou();
+                        
+                    } catch (err) {
+                        console.error('Stripe error:', err);
+                        alert('There was an error processing your card');
+                    }
+                } else if (selectedMethod === 'venmo' || selectedMethod === 'crypto') {
+                    // For Venmo/Crypto, we just show thank you since they handle payment externally
+                    showThankYou();
+                }
+                // PayPal is handled separately by its SDK
             });
         });
     </script>
