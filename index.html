@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support My Work | Digital Tip Jar</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #a29bfe;
+            --dark: #2d3436;
+            --light: #f5f6fa;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: var(--light);
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        
+        .tip-jar {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .profile {
+            margin-bottom: 1.5rem;
+        }
+        
+        .profile-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 5px solid var(--primary);
+            margin-bottom: 1rem;
+        }
+        
+        h1 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .bio {
+            color: var(--dark);
+            opacity: 0.8;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .payment-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .payment-btn {
+            background: white;
+            border: 2px solid var(--secondary);
+            border-radius: 10px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .payment-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2);
+        }
+        
+        .payment-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+        
+        .payment-label {
+            font-weight: 600;
+        }
+        
+        .custom-amount {
+            margin: 2rem 0;
+        }
+        
+        .amount-input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--secondary);
+            border-radius: 10px;
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .submit-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .submit-btn:hover {
+            background: #5649c0;
+            transform: translateY(-2px);
+        }
+        
+        .thank-you {
+            display: none;
+            margin-top: 2rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        @media (max-width: 500px) {
+            .payment-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="tip-jar">
+        <div class="profile">
+            <img src="https://i.pravatar.cc/150" alt="Profile" class="profile-img">
+            <h1>Support My Work</h1>
+            <p class="bio">
+                If you enjoy what I create, consider leaving a tip to help me continue making awesome content!
+            </p>
+        </div>
+        
+        <div class="payment-options">
+            <div class="payment-btn" id="stripe">
+                <i class="fab fa-cc-stripe payment-icon"></i>
+                <span class="payment-label">Credit Card</span>
+            </div>
+            
+            <div class="payment-btn" id="paypal">
+                <i class="fab fa-paypal payment-icon"></i>
+                <span class="payment-label">PayPal</span>
+            </div>
+            
+            <div class="payment-btn" id="venmo">
+                <i class="fab fa-vimeo-v payment-icon"></i>
+                <span class="payment-label">Venmo</span>
+            </div>
+            
+            <div class="payment-btn" id="crypto">
+                <i class="fab fa-bitcoin payment-icon"></i>
+                <span class="payment-label">Crypto</span>
+            </div>
+        </div>
+        
+        <div class="custom-amount">
+            <input type="number" class="amount-input" placeholder="Custom Amount ($)" min="1">
+            <button class="submit-btn" id="donate-btn">Send Tip</button>
+        </div>
+        
+        <div class="thank-you" id="thank-you">
+            Thank you for your support! ❤️
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const paymentOptions = document.querySelectorAll('.payment-btn');
+            const donateBtn = document.getElementById('donate-btn');
+            const thankYou = document.getElementById('thank-you');
+            const amountInput = document.querySelector('.amount-input');
+            
+            let selectedMethod = null;
+            
+            // Select payment method
+            paymentOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    paymentOptions.forEach(opt => opt.style.borderColor = '#a29bfe');
+                    this.style.borderColor = '#6c5ce7';
+                    selectedMethod = this.id;
+                });
+            });
+            
+            // Handle donation
+            donateBtn.addEventListener('click', function() {
+                const amount = amountInput.value;
+                
+                if (!amount || amount < 1) {
+                    alert('Please enter a valid amount');
+                    return;
+                }
+                
+                if (!selectedMethod) {
+                    alert('Please select a payment method');
+                    return;
+                }
+                
+                // In a real app, this would connect to payment processor API
+                console.log(`Processing $${amount} via ${selectedMethod}`);
+                
+                // Show thank you message
+                thankYou.style.display = 'block';
+                amountInput.value = '';
+                
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    thankYou.style.display = 'none';
+                    paymentOptions.forEach(opt => opt.style.borderColor = '#a29bfe');
+                    selectedMethod = null;
+                }, 3000);
+            });
+        });
+    </script>
+</body>
+</html>
